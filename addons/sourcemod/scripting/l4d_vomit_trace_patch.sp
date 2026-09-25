@@ -5,7 +5,6 @@
 #include <sdkhooks>
 #include <dhooks>
 #include <sourcescramble>
-#include <@Forgetest/gamedatawrapper>
 
 #define PLUGIN_VERSION "2.5"
 
@@ -16,6 +15,39 @@ public Plugin myinfo =
 	description = "Fix vomit stuck on Infected teammates & allow stricter collision test.",
 	version = PLUGIN_VERSION,
 	url = "https://github.com/Target5150/MoYu_Server_Stupid_Plugins"
+}
+
+methodmap GameDataWrapper < GameData {
+	public GameDataWrapper(const char[] file) {
+		GameData gd = new GameData(file);
+		if (!gd) SetFailState("Missing gamedata \"%s\"", file);
+		return view_as<GameDataWrapper>(gd);
+	}
+	property GameData Super {
+		public get() { return view_as<GameData>(this); }
+	}
+	public int GetOffset(const char[] key) {
+		int offset = this.Super.GetOffset(key);
+		if (offset == -1) SetFailState("Missing offset \"%s\"", key);
+		return offset;
+	}
+	public Address GetAddress(const char[] key) {
+		Address ptr = this.Super.GetAddress(key);
+		if (ptr == Address_Null) SetFailState("Missing address \"%s\"", key);
+		return ptr;
+	}
+	public MemoryPatch CreatePatchOrFail(const char[] name, bool enable = false) {
+		MemoryPatch hPatch = MemoryPatch.CreateFromConf(this, name);
+		if (!(enable ? hPatch.Enable() : hPatch.Validate()))
+			SetFailState("Failed to patch \"%s\"", name);
+		return hPatch;
+	}
+	public DynamicHook CreateDHookOrFail(const char[] name) {
+		DynamicHook hSetup = DynamicHook.FromConf(this, name);
+		if (!hSetup)
+			SetFailState("Missing dhook setup \"%s\"", name);
+		return hSetup;
+	}
 }
 
 #define OP_CALL_SIZE 5
